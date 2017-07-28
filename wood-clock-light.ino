@@ -34,9 +34,6 @@ void setup() {
     Serial.println(F("Starting Wood Clock...."));
   }
   delay(200);
-  if (!RTC.chipPresent() && DEBUG) {
-    Serial.println("RTC Chip DS1307 not found on I2c");
-  }
 
   DCF.Start();
 
