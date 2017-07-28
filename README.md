@@ -5,5 +5,9 @@
  * 85x pl9823-f8
 
 
+![Wood Clock](https://github.com/hggh/wood-clock-light/pics/clock.jpg "Wood Clock")
+
+![PCB](https://github.com/hggh/wood-clock-light/pics/pcb.jpg "PCB")
+
 
 See: https://github.com/hggh/wood-clock/tree/master/svg
