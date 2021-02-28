@@ -1,4 +1,3 @@
-
 const static uint8_t numbers[10][15] = {
   { // 0
   1,1,1,1,1,
