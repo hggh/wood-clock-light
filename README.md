@@ -10,4 +10,3 @@
 ![PCB](https://raw.githubusercontent.com/hggh/wood-clock-light/master/pics/pcb.jpg "PCB")
 
 
-See: https://github.com/hggh/wood-clock/tree/master/svg
