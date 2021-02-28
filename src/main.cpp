@@ -13,7 +13,8 @@
 
 #include "display.h"
 
-#define LED_COUNT 85
+// we have one sacrificial LED with a diode on VCC to push VDD
+#define LED_COUNT 86
 #define PIN_RGB_LEDS 22
 #define PIN_WIFI_RESET 17
 #define HOSTNAME "woodie"
@@ -89,6 +90,10 @@ void webHandleUpdate() {
 
     color_mode = COLOR_MODE_SINGLE_COLOR;
   }
+
+  String req_brightness = server.arg("brightness");
+  FastLED.setBrightness(req_brightness.toInt());
+
   update_leds = true;
   webHandleRoot();
 }
@@ -111,8 +116,8 @@ void setup() {
   hsv.val = 255;
   hsv.sat = 240;
 
-  FastLED.addLeds<PL9823, PIN_RGB_LEDS, GRB>(leds, LED_COUNT);
-  FastLED.setBrightness(5);
+  FastLED.addLeds<PL9823, PIN_RGB_LEDS>(leds, LED_COUNT);
+  FastLED.setBrightness(60);
 
   if(!SPIFFS.begin(true)){
     Serial.println("error on SPIFFS...");
@@ -164,13 +169,13 @@ void loop() {
     Serial.println(time_minute);
 
     if (time_hour == 0) {
-      clock_display_number(0, time_hour, true);
+      clock_display_number(0 + 1, time_hour, true);
     }
     else {
-      clock_display_number(0, time_hour, false);
+      clock_display_number(0 + 1, time_hour, false);
     }
-    write_char_to_leds(35, time_delimiter);
-    clock_display_number(50, time_minute, true);
+    write_char_to_leds(35 + 1, time_delimiter);
+    clock_display_number(50 + 1, time_minute, true);
 
     FastLED.show();
   }
