@@ -8,6 +8,7 @@ a rainbow wood clock with a custom LED matrix with 95 PL9823-F8 RBG LEDs.
 
 ![Wood Clock](https://raw.githubusercontent.com/hggh/wood-clock-light/master/pics/clock_rainbow.jpg "Wood rainbow")
 ![Wood Clock](https://raw.githubusercontent.com/hggh/wood-clock-light/master/pics/clock_red.jpg "Wood red")
+![Wood Clock](https://raw.githubusercontent.com/hggh/wood-clock-light/master/pics/webinterface.jpg "web interface")
 ![Wood Clock](https://raw.githubusercontent.com/hggh/wood-clock-light/master/pics/clock.jpg "Wood Clock")
 
 
