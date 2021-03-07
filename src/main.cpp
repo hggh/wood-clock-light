@@ -34,6 +34,8 @@ const int  day_light_offset_sec = 3600;
 uint8_t time_hour = 255;
 uint8_t time_minute = 255;
 uint8_t color_mode = COLOR_MODE_RAINBOW;
+int led_brightness = 60;
+String html_color_code = "#ff0000";
 bool update_leds = false;
 CHSV hsv;
 
@@ -70,6 +72,9 @@ void webHandleRoot() {
   while(file.available()){
     content += char(file.read());
   }
+  content.replace("LED_BRIGHTNESS_VALUE", String(led_brightness));
+  content.replace("LED_SINGLE_COLOR_CODE", html_color_code);
+  content.replace("LED_COLOR_MODE_SETTING", String(color_mode));
   file.close();
   server.send(200, "text/html", content);
 }
@@ -77,14 +82,13 @@ void webHandleRoot() {
 void webHandleUpdate() {
   String req_mode = server.arg("mode");
   if (req_mode.equals("rainbow")) {
-    Serial.println("Mode: Rainbow");
     color_mode = COLOR_MODE_RAINBOW;
   }
   else {
     String req_color_single = server.arg("color");
+    html_color_code = req_color_single;
     req_color_single.replace("#", "");
-    Serial.print("Mode: single color - ");
-    Serial.println(req_color_single);
+
     long color_code = strtol(req_color_single.c_str(), NULL, 16);
     led_color = CRGB(color_code);
 
@@ -92,7 +96,8 @@ void webHandleUpdate() {
   }
 
   String req_brightness = server.arg("brightness");
-  FastLED.setBrightness(req_brightness.toInt());
+  led_brightness = req_brightness.toInt();
+  FastLED.setBrightness(led_brightness);
 
   update_leds = true;
   webHandleRoot();
@@ -117,7 +122,7 @@ void setup() {
   hsv.sat = 240;
 
   FastLED.addLeds<PL9823, PIN_RGB_LEDS>(leds, LED_COUNT);
-  FastLED.setBrightness(60);
+  FastLED.setBrightness(led_brightness);
 
   if(!SPIFFS.begin(true)){
     Serial.println("error on SPIFFS...");
