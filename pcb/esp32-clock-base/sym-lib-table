@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name XC6220)(type Legacy)(uri /home/jonas/entwicklung/kicad-libraries/xc6220.lib)(options "")(descr ""))
+  (lib (name esp32prog)(type Legacy)(uri /home/jonas/entwicklung/kicad-libraries/esp32-prog-header.lib)(options "")(descr ""))
+  (lib (name 74ahc125)(type Legacy)(uri /home/jonas/entwicklung/kicad-libraries/74ahc125.lib)(options "")(descr ""))
+)
