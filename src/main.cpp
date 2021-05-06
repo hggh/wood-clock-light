@@ -14,9 +14,9 @@
 #include "display.h"
 
 // we have one sacrificial LED with a diode on VCC to push VDD
-#define LED_COUNT 86
-#define PIN_RGB_LEDS 22
-#define PIN_WIFI_RESET 17
+#define LED_COUNT 85
+#define PIN_RGB_LEDS 17
+#define PIN_WIFI_RESET 34
 #define HOSTNAME "woodie"
 
 #define COLOR_MODE_RAINBOW 1
@@ -176,13 +176,13 @@ void loop() {
     Serial.println(time_minute);
 
     if (time_hour == 0) {
-      clock_display_number(0 + 1, time_hour, true);
+      clock_display_number(0, time_hour, true);
     }
     else {
-      clock_display_number(0 + 1, time_hour, false);
+      clock_display_number(0, time_hour, false);
     }
-    write_char_to_leds(35 + 1, time_delimiter);
-    clock_display_number(50 + 1, time_minute, true);
+    write_char_to_leds(35, time_delimiter);
+    clock_display_number(50, time_minute, true);
 
     FastLED.show();
   }
