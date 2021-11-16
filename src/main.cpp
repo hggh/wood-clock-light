@@ -2,7 +2,7 @@
 #include "SPIFFS.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <ESPmDNS.h>
+#include <WiFiClientSecure.h>
 #include <time.h>
 
 #include <FastLED.h>
@@ -10,22 +10,24 @@
 #include <FS.h>
 #include <WiFiManager.h>
 #include <WebServer.h>
+#include <MQTT.h>
 
 #include "display.h"
+#include "config.h"
 
 // we have one sacrificial LED with a diode on VCC to push VDD
 #define LED_COUNT 85
 #define PIN_RGB_LEDS 17
 #define PIN_WIFI_RESET 34
-#define HOSTNAME "woodie"
 
 #define COLOR_MODE_RAINBOW 1
 #define COLOR_MODE_SINGLE_COLOR 2
 
 CRGB leds[LED_COUNT];
 CRGB led_color = CRGB::Red;
-WebServer server(80);
 WiFiManager wm;
+WiFiClientSecure net;
+MQTTClient mqtt;
 Bounce2::Button wifi_cfg_reset = Bounce2::Button();
 
 const long gmt_offset_sec = 3600;
@@ -35,7 +37,8 @@ uint8_t time_hour = 255;
 uint8_t time_minute = 255;
 uint8_t color_mode = COLOR_MODE_RAINBOW;
 int led_brightness = 60;
-String html_color_code = "#ff0000";
+volatile bool auth_token = false;
+uint8_t auth_token_number = 0;
 bool update_leds = false;
 CHSV hsv;
 
@@ -66,41 +69,45 @@ void clock_display_number(uint8_t offset, uint8_t number, boolean display_zero =
   write_char_to_leds(offset + 20, numbers[t_second]);
 }
 
-void webHandleRoot() {
-  String content = "";
-  File file = SPIFFS.open("/index.html");
-  while(file.available()){
-    content += char(file.read());
+void mqtt_message_received(MQTTClient *client, char topic[], char bytes[], int length) {
+  if (String(topic).endsWith("/led_brightness")) {
+    update_leds = true;
+    led_brightness = String(bytes).toInt();
+    FastLED.setBrightness(led_brightness);
   }
-  content.replace("LED_BRIGHTNESS_VALUE", String(led_brightness));
-  content.replace("LED_SINGLE_COLOR_CODE", html_color_code);
-  content.replace("LED_COLOR_MODE_SETTING", String(color_mode));
-  file.close();
-  server.send(200, "text/html", content);
+  if (String(topic).endsWith("/auth_token")) {
+    auth_token = true;
+    auth_token_number = String(bytes).toInt();
+  }
+  if (String(topic).endsWith("/led_color")) {
+    update_leds = true;
+
+    String color_string = String(bytes);
+    color_string.replace("#", "");
+    long color_code_tmp = strtol(color_string.c_str(), NULL, 16);
+    led_color = CRGB(color_code_tmp);
+  }
+  if (String(topic).endsWith("/color_mode")) {
+    update_leds = true;
+
+    if (String(bytes).equals("random_color")) {
+      color_mode = COLOR_MODE_RAINBOW;
+    }
+    else {
+      color_mode = COLOR_MODE_SINGLE_COLOR;
+    }
+  }
 }
 
-void webHandleUpdate() {
-  String req_mode = server.arg("mode");
-  if (req_mode.equals("rainbow")) {
-    color_mode = COLOR_MODE_RAINBOW;
-  }
-  else {
-    String req_color_single = server.arg("color");
-    html_color_code = req_color_single;
-    req_color_single.replace("#", "");
-
-    long color_code = strtol(req_color_single.c_str(), NULL, 16);
-    led_color = CRGB(color_code);
-
-    color_mode = COLOR_MODE_SINGLE_COLOR;
-  }
-
-  String req_brightness = server.arg("brightness");
-  led_brightness = req_brightness.toInt();
-  FastLED.setBrightness(led_brightness);
-
-  update_leds = true;
-  webHandleRoot();
+void connect_mqtt() {
+  mqtt.connect(HOSTNAME, MQTT_USERNAME, MQTT_PASSWORD);
+  mqtt.subscribe(String("/device/" + String(HOSTNAME) + "/led_brightness").c_str(), 1);
+  mqtt.subscribe(String("/device/" + String(HOSTNAME) + "/auth_token").c_str(), 1);
+  mqtt.subscribe(String("/device/" + String(HOSTNAME) + "/color_mode").c_str(), 1);
+  mqtt.subscribe(String("/device/" + String(HOSTNAME) + "/led_color").c_str(), 1);
+  mqtt.subscribe(String("/device/" + String(HOSTNAME) + "/show_minute_leds").c_str(), 1);
+  mqtt.onMessageAdvanced(mqtt_message_received);
+  mqtt.publish(String("/device/" + String(HOSTNAME) + "/boot").c_str(), WiFi.localIP().toString().c_str(), false, 1);
 }
 
 void wm_config_mode_callback(WiFiManager *myWiFiManager) {
@@ -112,6 +119,7 @@ void wm_config_mode_callback(WiFiManager *myWiFiManager) {
 }
 
 void setup() {
+  Serial.begin(115200);
   btStop();
   WiFi.mode(WIFI_STA);
   WiFi.setHostname(HOSTNAME);
@@ -132,12 +140,6 @@ void setup() {
 
   FastLED.clear(true);
 
-  server.on("/", webHandleRoot);
-  server.on("/update", webHandleUpdate);
-  server.begin();
-
-  MDNS.begin(HOSTNAME);
-  MDNS.addService("http", "tcp", 80);
   configTime(gmt_offset_sec, day_light_offset_sec, "0.de.pool.ntp.org", "1.de.pool.ntp.org", "2.de.pool.ntp.org");
   setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
   tzset();
@@ -145,11 +147,28 @@ void setup() {
   wifi_cfg_reset.attach(PIN_WIFI_RESET, INPUT);
   wifi_cfg_reset.interval(25);
   wifi_cfg_reset.setPressedState(LOW);
+
+  net.setCACert(root_ca);
+  mqtt.begin(MQTT_SERVER, MQTT_PORT, net);
+
 }
 
 void loop() {
   wifi_cfg_reset.update();
-  server.handleClient();
+  if (mqtt.connected() == false) {
+    connect_mqtt();
+  }
+  mqtt.loop();
+
+  if (auth_token == true) {
+    auth_token = false;
+    FastLED.clear();
+    clock_display_number(0, auth_token_number, false);
+    FastLED.show();
+
+    delay(5000);
+    update_leds = true;
+  }
 
   if (wifi_cfg_reset.pressed()) {
     // WiFi reset configuration button was pressed
@@ -161,7 +180,8 @@ void loop() {
   }
 
   struct tm timedate;
-  getLocalTime(&timedate);
+  time_t now = time(&now);
+  localtime_r(&now, &timedate);
 
   if (timedate.tm_min != time_minute || timedate.tm_hour != time_hour || update_leds == true) {
     // time has changed, display it on the WS2812b LEDs
